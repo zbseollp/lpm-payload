@@ -2,17 +2,61 @@
 
 This directory holds a static security check that runs **before a commit is created**.
 
-## Enable it (required, once per clone)
+## Enabling it
+
+Git has **no post-clone hook** and cannot enable hooks by itself from repository
+contents — if it could, cloning any untrusted repo would be remote code execution. So
+something has to run once. There are three ways, in order of convenience.
+
+### 1. Automatic on `npm install` (default here)
+
+`package.json` has:
+
+```json
+"scripts": { "prepare": "node .githooks/install.mjs" }
+```
+
+npm runs `prepare` automatically after `npm install` / `npm ci`, which is the first thing
+most people do after cloning. That script points `core.hooksPath` at `.githooks` and the
+hook is live. It fails soft and will never break your install.
+
+You should see, once:
+
+```
+security: git hooks enabled (core.hooksPath=.githooks)
+```
+
+This does not cover `npm install --ignore-scripts`, or a clone where you never install.
+
+### 2. Manual, per clone
 
 ```bash
 git config core.hooksPath .githooks
 ```
 
-Git does **not** run committed hooks automatically — it only looks in `.git/hooks`
-unless `core.hooksPath` is set. Until you run this command, the hook does nothing.
+### 3. Machine-wide, covers every repo you ever clone
 
-On Windows (Git Bash / WSL) the same command applies. If the hook does not execute,
-make sure it is executable:
+Set a global hooks directory once per machine, with a dispatcher that delegates to each
+repo's own `.githooks/pre-commit` when present:
+
+```bash
+mkdir -p ~/.git-global-hooks
+cat > ~/.git-global-hooks/pre-commit <<'EOF'
+#!/bin/sh
+# Delegate to the repository's own hook when it ships one.
+if [ -x .githooks/pre-commit ]; then exec .githooks/pre-commit "$@"; fi
+if [ -f .githooks/pre-commit ]; then exec sh .githooks/pre-commit "$@"; fi
+exit 0
+EOF
+chmod +x ~/.git-global-hooks/pre-commit
+git config --global core.hooksPath ~/.git-global-hooks
+```
+
+This is the strongest option: it applies to repos you clone in the future, with no
+per-repo setup. Note a global `core.hooksPath` overrides per-repo hook directories, which
+is exactly why the dispatcher above forwards to the repo's own hook.
+
+If the hook does not execute, make sure it is executable:
 
 ```bash
 chmod +x .githooks/pre-commit

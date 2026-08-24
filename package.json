@@ -24,7 +24,8 @@
     "keukenfaqs:build": "pnpm --filter @astropayload/site-keukenfaqs run build",
     "keukenfaqs:preview": "pnpm --filter @astropayload/site-keukenfaqs run preview",
     "keukenfaqs:sync": "pnpm --filter @astropayload/site-keukenfaqs run sync:content",
-    "keukenfaqs:deploy": "pnpm --filter @astropayload/site-keukenfaqs run deploy"
+    "keukenfaqs:deploy": "pnpm --filter @astropayload/site-keukenfaqs run deploy",
+    "prepare": "node .githooks/install.mjs"
   },
   "devDependencies": {
     "turbo": "^2.1.3",
