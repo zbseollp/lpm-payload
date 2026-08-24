@@ -1,0 +1,31 @@
+#!/bin/sh
+#
+# Pre-commit security gate.
+#
+# Statically scans the STAGED contents of source files for injected/obfuscated
+# code before the commit is created. Never executes repository code: it reads
+# blobs out of the git index and pattern-matches them as text.
+#
+# Enable once per clone:
+#     git config core.hooksPath .githooks
+#
+# This hook lives in .githooks/ so it is version-controlled and shared. Git does
+# not run committed hooks until core.hooksPath is set, so the command above is
+# required on every clone/machine.
+
+set -e
+
+SCANNER=".githooks/security-scan.mjs"
+
+if [ ! -f "$SCANNER" ]; then
+    echo "security-scan: $SCANNER not found - skipping (run from the repo root?)" >&2
+    exit 0
+fi
+
+if ! command -v node >/dev/null 2>&1; then
+    echo "security-scan: node not found on PATH - cannot run the security check." >&2
+    echo "security-scan: install Node or commit with --no-verify only if you are certain." >&2
+    exit 1
+fi
+
+node "$SCANNER" --staged
