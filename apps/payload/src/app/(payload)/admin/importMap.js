@@ -1,5 +1,6 @@
 import { TenantGitHubConnect as TenantGitHubConnect_4e53abc39a1699a16ca96e8ab4813d15 } from '../../../components/TenantGitHubConnect.client'
 import { TenantGithubCredentialActions as TenantGithubCredentialActions_3a1b1fab0b2c8586d11f5a190e777c9b } from '../../../components/TenantGithubCredentialActions.client'
+import { TenantCloudflareCredentialActions as TenantCloudflareCredentialActions_lpmcf } from '../../../components/TenantCloudflareCredentialActions.client'
 import { TenantActions as TenantActions_11e62c402fc7bb30e1cbbfe6d2f91e08 } from '../../../components/TenantActions.client'
 import { TenantDeployLinks as TenantDeployLinks_06e50379fa3f9a64b68c363de1e1e4b6 } from '../../../components/TenantDeployLinks.client'
 import { WatchTenantCollection as WatchTenantCollection_1d0591e3cf4f332c83a86da13a0de59a } from '@payloadcms/plugin-multi-tenant/client'
@@ -31,6 +32,7 @@ import { BoldFeatureClient as BoldFeatureClient_e70f5e05f09f93e00b997edb1ef0c864
 import { ItalicFeatureClient as ItalicFeatureClient_e70f5e05f09f93e00b997edb1ef0c864 } from '@payloadcms/richtext-lexical/client'
 import { AssignTenantFieldTrigger as AssignTenantFieldTrigger_1d0591e3cf4f332c83a86da13a0de59a } from '@payloadcms/plugin-multi-tenant/client'
 import { GithubCredentialTokenPanel as GithubCredentialTokenPanel_14604bfe52e0ea2cdfe0b2ae3400c780 } from '../../../components/GithubCredentialTokenField.client'
+import { CloudflareCredentialTokenPanel as CloudflareCredentialTokenPanel_lpmcf } from '../../../components/CloudflareCredentialTokenField.client'
 import { AdminIcon as AdminIcon_185d6ccbdba3821d35293b1570e8d361 } from '../../../components/AdminBrand'
 import { AdminLogo as AdminLogo_185d6ccbdba3821d35293b1570e8d361 } from '../../../components/AdminBrand'
 import { TenantSelector as TenantSelector_d6d5f193a167989e2ee7d14202901e62 } from '@payloadcms/plugin-multi-tenant/rsc'
@@ -46,6 +48,7 @@ import { CollectionCards as CollectionCards_f9c02e79a4aed9a3924487c0cd4cafb1 } f
 export const importMap = {
   "/components/TenantGitHubConnect.client#TenantGitHubConnect": TenantGitHubConnect_4e53abc39a1699a16ca96e8ab4813d15,
   "/components/TenantGithubCredentialActions.client#TenantGithubCredentialActions": TenantGithubCredentialActions_3a1b1fab0b2c8586d11f5a190e777c9b,
+  "/components/TenantCloudflareCredentialActions.client#TenantCloudflareCredentialActions": TenantCloudflareCredentialActions_lpmcf,
   "/components/TenantActions.client#TenantActions": TenantActions_11e62c402fc7bb30e1cbbfe6d2f91e08,
   "/components/TenantDeployLinks.client#TenantDeployLinks": TenantDeployLinks_06e50379fa3f9a64b68c363de1e1e4b6,
   "@payloadcms/plugin-multi-tenant/client#WatchTenantCollection": WatchTenantCollection_1d0591e3cf4f332c83a86da13a0de59a,
@@ -77,6 +80,7 @@ export const importMap = {
   "@payloadcms/richtext-lexical/client#ItalicFeatureClient": ItalicFeatureClient_e70f5e05f09f93e00b997edb1ef0c864,
   "@payloadcms/plugin-multi-tenant/client#AssignTenantFieldTrigger": AssignTenantFieldTrigger_1d0591e3cf4f332c83a86da13a0de59a,
   "/components/GithubCredentialTokenField.client#GithubCredentialTokenPanel": GithubCredentialTokenPanel_14604bfe52e0ea2cdfe0b2ae3400c780,
+  "/components/CloudflareCredentialTokenField.client#CloudflareCredentialTokenPanel": CloudflareCredentialTokenPanel_lpmcf,
   "/components/AdminBrand#AdminIcon": AdminIcon_185d6ccbdba3821d35293b1570e8d361,
   "/components/AdminBrand#AdminLogo": AdminLogo_185d6ccbdba3821d35293b1570e8d361,
   "@payloadcms/plugin-multi-tenant/rsc#TenantSelector": TenantSelector_d6d5f193a167989e2ee7d14202901e62,

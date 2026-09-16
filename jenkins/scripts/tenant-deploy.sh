@@ -65,6 +65,10 @@ fi
 
 WORKERS_URL=""
 
+# Prefer per-tenant / Default Cloudflare credential from Payload; keep Jenkins CLOUDFLARE_* as fallback.
+# shellcheck source=resolve-cloudflare-credentials.sh
+source "$SCRIPT_DIR/resolve-cloudflare-credentials.sh"
+
 if [ "$DEPLOY_MODE" = "external" ]; then
   cd "$PLATFORM"
   pnpm tenant-cli sync --slug "$TENANT" --site "$SITE_ROOT" --blog-path "$BLOG_CONTENT_PATH"

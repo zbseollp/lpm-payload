@@ -13,9 +13,11 @@ import { Users } from './collections/Users'
 import { BlogPosts } from './collections/BlogPosts'
 import { Media } from './collections/Media'
 import { GithubCredentials } from './collections/GithubCredentials'
+import { CloudflareCredentials } from './collections/CloudflareCredentials'
 import { PlatformSettings } from './globals/PlatformSettings'
 import { isSuperAdmin } from './access/isSuperAdmin'
 import { ciGithubTokenEndpoint } from './endpoints/ciGithubToken'
+import { ciCloudflareCredentialsEndpoint } from './endpoints/ciCloudflareCredentials'
 import { scheduledPublishEndpoint } from './endpoints/scheduledPublish'
 import { r2StoragePlugin } from './lib/r2Storage'
 
@@ -58,11 +60,11 @@ export default buildConfig({
     },
   },
 
-  collections: [Tenants, Users, BlogPosts, Media, GithubCredentials],
+  collections: [Tenants, Users, BlogPosts, Media, GithubCredentials, CloudflareCredentials],
 
   globals: [PlatformSettings],
 
-  endpoints: [ciGithubTokenEndpoint, scheduledPublishEndpoint],
+  endpoints: [ciGithubTokenEndpoint, ciCloudflareCredentialsEndpoint, scheduledPublishEndpoint],
 
   editor: lexicalEditor({}),
 

@@ -72,6 +72,7 @@ export interface Config {
     'blog-posts': BlogPost;
     media: Media;
     'github-credentials': GithubCredential;
+    'cloudflare-credentials': CloudflareCredential;
     'payload-kv': PayloadKv;
     'payload-locked-documents': PayloadLockedDocument;
     'payload-preferences': PayloadPreference;
@@ -84,6 +85,7 @@ export interface Config {
     'blog-posts': BlogPostsSelect<false> | BlogPostsSelect<true>;
     media: MediaSelect<false> | MediaSelect<true>;
     'github-credentials': GithubCredentialsSelect<false> | GithubCredentialsSelect<true>;
+    'cloudflare-credentials': CloudflareCredentialsSelect<false> | CloudflareCredentialsSelect<true>;
     'payload-kv': PayloadKvSelect<false> | PayloadKvSelect<true>;
     'payload-locked-documents': PayloadLockedDocumentsSelect<false> | PayloadLockedDocumentsSelect<true>;
     'payload-preferences': PayloadPreferencesSelect<false> | PayloadPreferencesSelect<true>;
@@ -216,6 +218,10 @@ export interface Tenant {
    */
   cloudflareProject?: string | null;
   /**
+   * Cloudflare account for Workers deploy (encrypted API token). When empty, uses the Platform credential marked Default, then shared CLOUDFLARE_* CI secrets.
+   */
+  cloudflareCredential?: (number | null) | CloudflareCredential;
+  /**
    * GitHub Actions workflow file used to rebuild this tenant.
    */
   githubWorkflow?: string | null;
@@ -342,6 +348,45 @@ export interface GithubCredential {
   tokenEncrypted?: string | null;
   /**
    * Scopes, expiry, rotation notes.
+   */
+  notes?: string | null;
+  lastValidatedAt?: string | null;
+  lastValidationError?: string | null;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
+ * Encrypted Cloudflare API tokens per account. Tenants pick an account for Workers deploy; if unset, the credential marked Default is used.
+ *
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "cloudflare-credentials".
+ */
+export interface CloudflareCredential {
+  id: number;
+  /**
+   * e.g. "Account A (default)" — shown when linking a tenant.
+   */
+  label: string;
+  /**
+   * Cloudflare Account ID (32-char hex from the dashboard URL / Workers overview).
+   */
+  accountId: string;
+  /**
+   * Use for tenants with no Cloudflare account selected. Only one credential should be default.
+   */
+  isDefault?: boolean | null;
+  /**
+   * Optional workers.dev subdomain for this account (e.g. twilight-breeze-d943). Used when guessing preview URLs.
+   */
+  workersDevSubdomain?: string | null;
+  apiToken?: string | null;
+  /**
+   * Last four characters of the stored API token.
+   */
+  apiTokenLast4?: string | null;
+  apiTokenEncrypted?: string | null;
+  /**
+   * Permissions needed: Workers Scripts Edit, Account read. CI falls back to CLOUDFLARE_* env if no credentials exist.
    */
   notes?: string | null;
   lastValidatedAt?: string | null;
@@ -522,6 +567,10 @@ export interface PayloadLockedDocument {
     | ({
         relationTo: 'github-credentials';
         value: number | GithubCredential;
+      } | null)
+    | ({
+        relationTo: 'cloudflare-credentials';
+        value: number | CloudflareCredential;
       } | null);
   globalSlug?: string | null;
   user: {
@@ -613,6 +662,7 @@ export interface TenantsSelect<T extends boolean = true> {
   githubSetupStatus?: T;
   githubValidationNotes?: T;
   cloudflareProject?: T;
+  cloudflareCredential?: T;
   githubWorkflow?: T;
   webhookEnabled?: T;
   lastPublishedAt?: T;
@@ -782,6 +832,24 @@ export interface GithubCredentialsSelect<T extends boolean = true> {
   token?: T;
   tokenLast4?: T;
   tokenEncrypted?: T;
+  notes?: T;
+  lastValidatedAt?: T;
+  lastValidationError?: T;
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "cloudflare-credentials_select".
+ */
+export interface CloudflareCredentialsSelect<T extends boolean = true> {
+  label?: T;
+  accountId?: T;
+  isDefault?: T;
+  workersDevSubdomain?: T;
+  apiToken?: T;
+  apiTokenLast4?: T;
+  apiTokenEncrypted?: T;
   notes?: T;
   lastValidatedAt?: T;
   lastValidationError?: T;

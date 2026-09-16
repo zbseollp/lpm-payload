@@ -14,6 +14,7 @@ import {
   setupGithubRepoEndpoint,
   validateGithubEndpoint,
 } from '../endpoints/tenantGithub'
+import { validateCloudflareEndpoint } from '../endpoints/tenantCloudflare'
 import { deployEndpoint, publishEndpoint, scaffoldEndpoint } from '../endpoints/tenantActions'
 import { payloadLog } from '../lib/payloadLogger'
 import { tenantAfterDeleteHook, tenantBeforeDeleteHook } from '../lib/tenantDeleteCleanup'
@@ -91,6 +92,7 @@ export const Tenants: CollectionConfig = {
     publishEndpoint,
     deployEndpoint,
     validateGithubEndpoint,
+    validateCloudflareEndpoint,
     setupGithubRepoEndpoint,
     importBlogFromRepoEndpoint,
     reportDeployEndpoint,
@@ -357,6 +359,25 @@ export const Tenants: CollectionConfig = {
               name: 'cloudflareProject',
               type: 'text',
               admin: { description: 'Wrangler project name (defaults to slug).' },
+            },
+            {
+              name: 'cloudflareCredential',
+              type: 'relationship',
+              relationTo: 'cloudflare-credentials',
+              admin: {
+                description:
+                  'Cloudflare account for Workers deploy (encrypted API token). When empty, uses the Platform credential marked Default, then shared CLOUDFLARE_* CI secrets.',
+              },
+            },
+            {
+              name: 'cloudflareCredentialActions',
+              type: 'ui',
+              admin: {
+                components: {
+                  Field:
+                    '/components/TenantCloudflareCredentialActions.client#TenantCloudflareCredentialActions',
+                },
+              },
             },
             {
               name: 'githubWorkflow',

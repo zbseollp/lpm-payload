@@ -97,6 +97,70 @@ END $$;
 CREATE INDEX IF NOT EXISTS payload_preferences_rels_github_credentials_id_idx
   ON payload_preferences_rels (github_credentials_id);
 
+-- Cloudflare credentials (encrypted API tokens per account; Default for unlinked tenants)
+CREATE TABLE IF NOT EXISTS cloudflare_credentials (
+  id serial PRIMARY KEY,
+  label varchar NOT NULL,
+  account_id varchar NOT NULL,
+  is_default boolean DEFAULT false,
+  workers_dev_subdomain varchar,
+  api_token_last4 varchar,
+  api_token_encrypted varchar,
+  notes varchar,
+  last_validated_at timestamptz,
+  last_validation_error varchar,
+  created_at timestamptz DEFAULT now() NOT NULL,
+  updated_at timestamptz DEFAULT now() NOT NULL
+);
+
+ALTER TABLE tenants
+  ADD COLUMN IF NOT EXISTS cloudflare_credential_id integer;
+
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_constraint WHERE conname = 'tenants_cloudflare_credential_id_fk'
+  ) THEN
+    ALTER TABLE tenants
+      ADD CONSTRAINT tenants_cloudflare_credential_id_fk
+      FOREIGN KEY (cloudflare_credential_id) REFERENCES cloudflare_credentials (id) ON DELETE SET NULL;
+  END IF;
+END $$;
+
+ALTER TABLE payload_locked_documents_rels
+  ADD COLUMN IF NOT EXISTS cloudflare_credentials_id integer;
+
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_constraint WHERE conname = 'payload_locked_documents_rels_cloudflare_credentials_fk'
+  ) THEN
+    ALTER TABLE payload_locked_documents_rels
+      ADD CONSTRAINT payload_locked_documents_rels_cloudflare_credentials_fk
+      FOREIGN KEY (cloudflare_credentials_id) REFERENCES cloudflare_credentials (id) ON DELETE CASCADE;
+  END IF;
+END $$;
+
+CREATE INDEX IF NOT EXISTS payload_locked_documents_rels_cloudflare_credentials_id_idx
+  ON payload_locked_documents_rels (cloudflare_credentials_id);
+
+ALTER TABLE IF EXISTS payload_preferences_rels
+  ADD COLUMN IF NOT EXISTS cloudflare_credentials_id integer;
+
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_constraint WHERE conname = 'payload_preferences_rels_cloudflare_credentials_fk'
+  ) THEN
+    ALTER TABLE payload_preferences_rels
+      ADD CONSTRAINT payload_preferences_rels_cloudflare_credentials_fk
+      FOREIGN KEY (cloudflare_credentials_id) REFERENCES cloudflare_credentials (id) ON DELETE CASCADE;
+  END IF;
+END $$;
+
+CREATE INDEX IF NOT EXISTS payload_preferences_rels_cloudflare_credentials_id_idx
+  ON payload_preferences_rels (cloudflare_credentials_id);
+
 -- Blog posts: draft / scheduled / published (scheduled auto-promote via cron)
 ALTER TABLE blog_posts
   ADD COLUMN IF NOT EXISTS publish_status varchar DEFAULT 'published';
