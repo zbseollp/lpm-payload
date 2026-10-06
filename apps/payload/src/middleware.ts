@@ -53,9 +53,9 @@ function allowedOriginsFor(req: NextRequest): Set<string> {
 }
 
 /**
- * Some Payload admin server components read `x-pathname` via `headers()` — that
- * only sees **request** headers. Forward the pathname on the request so admin
- * routes resolve correctly behind proxies.
+ * payload-totp reads `x-pathname` via `headers()` in server components — that
+ * only sees **request** headers. Setting it on the response alone makes every
+ * admin route look like `/`, which breaks redirects to /admin/setup-totp.
  */
 function nextWithPathname(req: NextRequest, requestHeaders?: Headers): NextResponse {
   const headers = requestHeaders ?? new Headers(req.headers)

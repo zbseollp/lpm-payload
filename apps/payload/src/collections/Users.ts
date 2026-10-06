@@ -20,6 +20,14 @@ const cookieSecure = (() => {
 
 export const Users: CollectionConfig = {
   slug: 'users',
+  // Allow GET /api/users/me during setup-totp / verify-totp (password session, no TOTP cookie yet).
+  custom: {
+    totp: {
+      disableAccessWrapper: {
+        read: true,
+      },
+    },
+  },
   admin: {
     useAsTitle: 'email',
     defaultColumns: ['email', 'roles'],

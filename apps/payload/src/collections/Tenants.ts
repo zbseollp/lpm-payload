@@ -1,6 +1,7 @@
 import type { CollectionConfig } from 'payload'
 
 import { isSuperAdmin } from '../access/isSuperAdmin'
+import { totpPublicReadCustom } from '../access/totpPublicRead'
 import { cmsApiRead } from '../access/tenantAccess'
 import { importBlogContentEndpoint } from '../endpoints/importBlogCi'
 import {
@@ -26,6 +27,7 @@ import { DEPLOY_STATUSES, SCAFFOLD_STATUSES } from '../lib/tenantDeployStatus'
  */
 export const Tenants: CollectionConfig = {
   slug: 'tenants',
+  custom: totpPublicReadCustom,
   admin: {
     useAsTitle: 'name',
     defaultColumns: ['name', 'slug', 'domain', 'lastDeployStatus', 'lastDeployAt'],

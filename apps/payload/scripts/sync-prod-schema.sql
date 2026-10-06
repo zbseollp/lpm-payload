@@ -26,7 +26,7 @@ ALTER TABLE users
 
 CREATE INDEX IF NOT EXISTS users_api_key_index_idx ON users (api_key_index);
 
--- Users: legacy totp_secret column (optional; admin login is email + password only)
+-- Users: TOTP 2FA (payload-totp plugin)
 ALTER TABLE users
   ADD COLUMN IF NOT EXISTS totp_secret varchar;
 
