@@ -411,8 +411,6 @@ export interface User {
         id?: string | null;
       }[]
     | null;
-  totpSecret?: string | null;
-  hasTotp?: boolean | null;
   updatedAt: string;
   createdAt: string;
   enableAPIKey?: boolean | null;
@@ -694,8 +692,6 @@ export interface UsersSelect<T extends boolean = true> {
         tenant?: T;
         id?: T;
       };
-  totpSecret?: T;
-  hasTotp?: T;
   updatedAt?: T;
   createdAt?: T;
   enableAPIKey?: T;

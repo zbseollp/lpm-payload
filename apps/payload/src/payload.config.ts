@@ -5,7 +5,6 @@ import { postgresAdapter } from '@payloadcms/db-postgres'
 import { multiTenantPlugin } from '@payloadcms/plugin-multi-tenant'
 import { lexicalEditor } from '@payloadcms/richtext-lexical'
 import { buildConfig } from 'payload'
-import { payloadTotp } from 'payload-totp'
 import sharp from 'sharp'
 
 import { Tenants } from './collections/Tenants'
@@ -52,11 +51,6 @@ export default buildConfig({
         Logo: '/components/AdminBrand#AdminLogo',
         Icon: '/components/AdminBrand#AdminIcon',
       },
-      providers: [
-        {
-          path: '@/components/TotpHardRedirect.client#TotpHardRedirect',
-        },
-      ],
     },
   },
 
@@ -115,16 +109,5 @@ export default buildConfig({
     }),
 
     r2Plugin,
-
-    // Must stay last — wraps access controls for TOTP verification on admin login.
-    // Issuer is hardcoded so a stale PAYLOAD_TOTP_ISSUER=astropayload on the server
-    // cannot keep showing the old name in authenticator apps.
-    payloadTotp({
-      collection: 'users',
-      forceSetup: true,
-      totp: {
-        issuer: 'LPM',
-      },
-    }),
   ],
 })

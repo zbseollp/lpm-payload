@@ -1,7 +1,6 @@
 import type { CollectionConfig, CollectionBeforeOperationHook } from 'payload'
 
 import { authenticatedRead, cmsApiRead } from '../access/tenantAccess'
-import { totpPublicReadCustom } from '../access/totpPublicRead'
 
 /**
  * Prefix every uploaded media key with `tenants/<slug>/...` so a single R2
@@ -32,7 +31,6 @@ const setTenantPrefix: CollectionBeforeOperationHook = async ({ args, operation,
 
 export const Media: CollectionConfig = {
   slug: 'media',
-  custom: totpPublicReadCustom,
   labels: { singular: 'Media', plural: 'Media' },
   admin: {
     useAsTitle: 'filename',

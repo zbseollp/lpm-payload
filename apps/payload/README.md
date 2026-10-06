@@ -26,7 +26,7 @@ pnpm payload generate:types    # regenerate src/payload-types.ts
 | Slug          | Scope  | Purpose |
 | ------------- | ------ | ------- |
 | `tenants`     | global | One row per site: domain, branding, SEO, analytics |
-| `users`       | global | Admin users (roles + tenant access); TOTP 2FA required for admin login |
+| `users`       | global | Admin users (roles + tenant access); email and password login |
 | `blog-posts`  | tenant | Articles (title, slug, body, categories, tags, SEO) |
 | `media`       | tenant | Images for blog hero / OG (R2) |
 

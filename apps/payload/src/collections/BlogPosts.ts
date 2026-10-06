@@ -2,7 +2,6 @@ import type { CollectionConfig } from 'payload'
 import { sanitizeBlogSlug } from '@astropayload/payload-sdk/formatters'
 
 import { authenticatedRead, cmsApiRead } from '../access/tenantAccess'
-import { totpPublicReadCustom } from '../access/totpPublicRead'
 import {
   contentPublishComponents,
   publishContentBarField,
@@ -16,7 +15,6 @@ import {
  */
 export const BlogPosts: CollectionConfig = {
   slug: 'blog-posts',
-  custom: totpPublicReadCustom,
   labels: { singular: 'Blog Post', plural: 'Blog Posts' },
   admin: {
     useAsTitle: 'title',

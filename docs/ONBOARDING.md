@@ -10,7 +10,7 @@ cp apps/payload/.env.example apps/payload/.env
 # fill in: DATABASE_URI, PAYLOAD_SECRET, R2_*, GITHUB_TOKEN, GITHUB_OWNER, GITHUB_REPO
 pnpm --filter @astropayload/payload dev
 # create super-admin at http://localhost:3000/admin
-# on first login you will be prompted to set up 2FA (authenticator app)
+# log in with email and password
 # enable API key on your user row
 export PAYLOAD_URL=http://localhost:3000
 export PAYLOAD_API_KEY=<your-api-key>

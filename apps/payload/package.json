@@ -43,7 +43,6 @@
     "nanoid": "^3.3.12",
     "next": "15.4.11",
     "payload": "^3.0.0",
-    "payload-totp": "^3.0.1",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
     "sharp": "^0.34.3",

@@ -547,17 +547,13 @@ For destructive changes (rename a field, drop a collection):
 
 ## 7. Security checklist
 
-### Admin two-factor authentication (2FA)
+### Admin login
 
-All admin users (Super Admin, Tenant Admin, and Editor) must set up TOTP 2FA before using the Payload admin panel. After the first password login, users are redirected to scan a QR code with an authenticator app (Google Authenticator, Authy, 1Password, etc.). Subsequent logins require email, password, and a 6-digit code.
+Admin users sign in with **email and password** only (no TOTP / authenticator app).
 
-- Implemented via [`payload-totp`](https://github.com/GeorgeHulpoi/payload-totp) on the `users` collection (`forceSetup: true`).
-- Optional env: `PAYLOAD_TOTP_ISSUER` — label shown in authenticator apps (default `LMP`).
-- **API keys are unaffected** — CI and Astro builds continue to authenticate with `Authorization: users API-Key …` without TOTP.
-- Public content reads (`tenants`, `blog-posts`, `media`) remain unauthenticated for build-time fetches.
-- **After first deploy with 2FA**, run `psql "$DATABASE_URI" -f apps/payload/scripts/sync-prod-schema.sql` on the VPS (adds `users.totp_secret`). Without this column, admin login returns `column users.totp_secret does not exist`.
-- **`PAYLOAD_PUBLIC_SERVER_URL`** must match the browser URL (e.g. `https://payload.10beste.com`). Wrong values break server-side redirects to `/admin/setup-totp`.
-- If login succeeds but the UI stays on the login form until refresh, redeploy with `TotpHardRedirect` (full-page navigation to setup/verify) and ensure `users` has `totp.disableAccessWrapper.read` so `/api/users/me` is not 403 on the verify page.
+- **API keys** — CI and Astro builds use `Authorization: users API-Key …` (enable on the user row in admin).
+- Public content reads (`tenants`, `blog-posts`, `media`) use API keys or CI tokens as configured in access control.
+- **`PAYLOAD_PUBLIC_SERVER_URL`** must match the browser URL (e.g. `https://payload.example.com`) for cookies and redirects.
 
 ### Secrets handling
 
