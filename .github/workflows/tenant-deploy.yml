@@ -168,6 +168,49 @@ jobs:
           pnpm tenant-cli sync --slug "$TENANT" --site "$SITE_ROOT" --blog-path "$BLOG_CONTENT_PATH"
           echo "::notice ::Check log line '[tenant-cli sync] done: { blog: N }'. N=0 means no posts in Payload — check auto-import (reads .md and .mdx) or import manually. Set tenant blog file extension to mdx if the site uses MDX."
 
+      # Content commit-back, part 1 of 2: snapshot the freshly synced blog folder
+      # as a LOCAL commit, before any client code (install/build) runs. Nothing is
+      # pushed here. The SHA is pushed only after a successful build + deploy
+      # (see "Push synced blog content to site repo"), so a failed build never
+      # lands on the branch. Only BLOG_CONTENT_PATH is staged (no tenant.config.json,
+      # dist or .env). Never fails the deploy.
+      - name: Commit synced blog content (local, external)
+        if: env.DEPLOY_MODE == 'external'
+        id: content_commit
+        continue-on-error: true
+        working-directory: site
+        run: |
+          set -euo pipefail
+          BLOG_PATH="${BLOG_CONTENT_PATH#/}"
+          BLOG_PATH="${BLOG_PATH%/}"
+          case "$BLOG_PATH" in
+            ''|.|*..*) echo "::warning ::Commit-back skipped: unsafe blog path '${BLOG_CONTENT_PATH}'."; exit 0 ;;
+          esac
+          if [ ! -d "$BLOG_PATH" ]; then
+            echo "::warning ::Commit-back skipped: '${BLOG_PATH}' does not exist after sync."
+            exit 0
+          fi
+          # Guard: an empty sync (Payload returned 0 posts) must not wipe the repo.
+          POSTS=$(find "$BLOG_PATH" -type f \( -name '*.md' -o -name '*.mdx' \) | wc -l)
+          if [ "$POSTS" -eq 0 ]; then
+            echo "::warning ::Commit-back skipped: sync wrote 0 posts to ${BLOG_PATH}; not committing a mass delete."
+            exit 0
+          fi
+          git config user.name "lpm-payload-sync"
+          git config user.email "lpm-payload-sync@users.noreply.github.com"
+          git add -A -- "$BLOG_PATH"
+          if git diff --cached --quiet; then
+            echo "Commit-back: ${BLOG_PATH} on ${GITHUB_BRANCH} already matches Payload (${POSTS} posts). Nothing to commit."
+            exit 0
+          fi
+          git diff --cached --shortstat
+          git commit -q \
+            -m "chore(content): sync blog uit Payload [skip ci]" \
+            -m "Tenant: ${TENANT}. Posts: ${POSTS}. Run: ${GITHUB_RUN_URL}"
+          echo "sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
+          echo "blog_path=${BLOG_PATH}" >> "$GITHUB_OUTPUT"
+          echo "Commit-back: local commit $(git rev-parse --short HEAD) created; push follows after a successful deploy."
+
       # External client repos are untrusted relative to platform secrets.
       # Do not pass PAYLOAD_*/DEPLOY_*/CLOUDFLARE_* into install or build.
       - name: Install site dependencies (external)
@@ -286,6 +329,74 @@ jobs:
           fi
           WORKERS_URL=$(grep -oE 'https://[a-zA-Z0-9.-]+\.workers\.dev' deploy.log | tail -1 || true)
           echo "workers_url=${WORKERS_URL}" >> "$GITHUB_OUTPUT"
+
+      # Content commit-back, part 2 of 2: push the commit made right after sync,
+      # only when build + deploy succeeded. The SHA was recorded before client code
+      # ran, so the pushed content is exactly the Payload sync. The token is passed
+      # per command (never written to .git/config). On non-fast-forward: one retry
+      # by cherry-picking the commit onto the latest branch tip in a separate
+      # worktree. Any failure (no write access, branch protection, conflict) is a
+      # warning only; the deploy result is unaffected.
+      - name: Push synced blog content to site repo
+        if: success() && env.DEPLOY_MODE == 'external' && steps.content_commit.outputs.sha != ''
+        continue-on-error: true
+        working-directory: site
+        env:
+          PUSH_TOKEN: ${{ env.CLIENT_GITHUB_TOKEN || secrets.EXTERNAL_REPO_GITHUB_TOKEN }}
+          SHA: ${{ steps.content_commit.outputs.sha }}
+          BLOG_PATH: ${{ steps.content_commit.outputs.blog_path }}
+        run: |
+          set -uo pipefail
+          if [ -z "${PUSH_TOKEN:-}" ]; then
+            echo "::warning ::Commit-back skipped: no GitHub token with access to ${GITHUB_REPO}."
+            exit 0
+          fi
+          B64=$(printf 'x-access-token:%s' "$PUSH_TOKEN" | base64 -w0)
+          echo "::add-mask::${B64}"
+          AUTH_CFG="http.https://github.com/.extraheader=AUTHORIZATION: basic ${B64}"
+          REMOTE="https://github.com/${GITHUB_REPO}.git"
+          REF="refs/heads/${GITHUB_BRANCH}"
+
+          if OUT=$(git -c "$AUTH_CFG" push "$REMOTE" "${SHA}:${REF}" 2>&1); then
+            echo "$OUT"
+            echo "::notice ::Commit-back: pushed ${SHA:0:7} to ${GITHUB_REPO}@${GITHUB_BRANCH}."
+            exit 0
+          fi
+          echo "$OUT"
+          if printf '%s' "$OUT" | grep -qiE 'protected branch|GH006|GH013'; then
+            echo "::warning ::Commit-back: ${GITHUB_BRANCH} is protected in ${GITHUB_REPO}; content not pushed. Deploy is not affected."
+            exit 0
+          fi
+          if ! printf '%s' "$OUT" | grep -qiE 'non-fast-forward|fetch first'; then
+            echo "::warning ::Commit-back push to ${GITHUB_REPO}@${GITHUB_BRANCH} failed (no write access or branch protection?). The token needs Contents: read and write on this repo. Deploy is not affected."
+            exit 0
+          fi
+
+          echo "Branch moved during the run; retrying once on top of the latest ${GITHUB_BRANCH}."
+          if ! git -c "$AUTH_CFG" fetch -q "$REMOTE" "$REF"; then
+            echo "::warning ::Commit-back: fetch of ${GITHUB_REPO}@${GITHUB_BRANCH} failed; content not pushed."
+            exit 0
+          fi
+          WT="${RUNNER_TEMP}/commit-back-wt"
+          rm -rf "$WT"
+          git worktree add -q --detach "$WT" FETCH_HEAD
+          if git -C "$WT" diff --quiet HEAD "$SHA" -- "$BLOG_PATH"; then
+            echo "::notice ::Commit-back: ${GITHUB_BRANCH} already has this content. Nothing to push."
+            git worktree remove --force "$WT"
+            exit 0
+          fi
+          if ! git -C "$WT" cherry-pick "$SHA" >/dev/null 2>&1; then
+            git -C "$WT" cherry-pick --abort >/dev/null 2>&1 || true
+            git worktree remove --force "$WT"
+            echo "::warning ::Commit-back: conflict with newer commits on ${GITHUB_BRANCH}; content not pushed. Next publish will try again."
+            exit 0
+          fi
+          if git -C "$WT" -c "$AUTH_CFG" push "$REMOTE" "HEAD:${REF}"; then
+            echo "::notice ::Commit-back: pushed $(git -C "$WT" rev-parse --short HEAD) to ${GITHUB_REPO}@${GITHUB_BRANCH} after retry."
+          else
+            echo "::warning ::Commit-back: retry push to ${GITHUB_REPO}@${GITHUB_BRANCH} failed; content not pushed. Deploy is not affected."
+          fi
+          git worktree remove --force "$WT" || true
 
       - name: Report deploy success
         if: success() && env.PAYLOAD_URL != ''
