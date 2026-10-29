@@ -51,6 +51,9 @@ cp apps/sites/<slug>/.env.example apps/sites/<slug>/.env
 ### Webhook worker
 Production-only; configured via `wrangler secret put` (see [PRODUCTION.md](./PRODUCTION.md)).
 
+### Secrets worker
+Production-only. Deploy with `cd apps/secrets && pnpm deploy`, then `wrangler secret put` each key (see [apps/secrets/README.md](../apps/secrets/README.md)). GitHub Actions load CI secrets from this Worker via `.github/scripts/load-cloudflare-secrets.sh`.
+
 ---
 
 ## 2. Payload CMS (`apps/payload`)

@@ -13,23 +13,28 @@ pipeline {
   }
 
   environment {
-    PAYLOAD_URL = credentials('astropayload-payload-url')
-    DEPLOY_REPORT_TOKEN = credentials('astropayload-deploy-report-token')
     PAYLOAD_API_KEY = "${env.PAYLOAD_API_KEY ?: ''}"
-    EXTERNAL_REPO_GITHUB_TOKEN = credentials('astropayload-external-repo-github-token')
-    PLATFORM_GIT_TOKEN = credentials('astropayload-platform-github-token')
     PLATFORM_GIT_BRANCH = "${env.PLATFORM_GIT_BRANCH ?: 'main'}"
     GITHUB_OWNER = "${env.GITHUB_OWNER ?: ''}"
     GITHUB_REPO = "${env.GITHUB_REPO ?: 'astropayload'}"
+    LPM_SECRETS_URL = "${env.LPM_SECRETS_URL ?: ''}"
+    LPM_SECRETS_TOKEN = "${env.LPM_SECRETS_TOKEN ?: ''}"
+    ASTROPAYLOAD_SECRETS_URL = "${env.ASTROPAYLOAD_SECRETS_URL ?: ''}"
+    ASTROPAYLOAD_SECRETS_TOKEN = "${env.ASTROPAYLOAD_SECRETS_TOKEN ?: ''}"
   }
 
   stages {
     stage('Import blog from repo') {
       steps {
-        sh '''
-          chmod +x jenkins/scripts/*.sh
-          bash jenkins/scripts/tenant-import-blog.sh
-        '''
+        script {
+          def secrets = load 'jenkins/withJobSecrets.groovy'
+          secrets.withJobSecrets {
+            sh '''
+              chmod +x jenkins/scripts/*.sh
+              bash jenkins/scripts/tenant-import-blog.sh
+            '''
+          }
+        }
       }
     }
   }

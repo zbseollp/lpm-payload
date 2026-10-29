@@ -129,23 +129,20 @@ Cloudflare assigns a `*.workers.dev` URL by default. To attach a custom domain (
 2. Add `keukenfaqs.nl` and `www.keukenfaqs.nl`.
 3. Cloudflare automatically provisions an SSL cert and routes traffic.
 
-### 1.6 Set GitHub Actions secrets
+### 1.6 Set GitHub Actions secrets (Cloudflare Worker)
 
-In the repo settings → **Secrets and variables → Actions**, add:
+Preferred: deploy [apps/secrets](../apps/secrets/README.md), then in the repo settings → **Secrets and variables → Actions** keep **only**:
 
 | Secret | Value |
 |---|---|
-| `CLOUDFLARE_API_TOKEN` | Token with Workers Scripts:Edit on your account |
-| `CLOUDFLARE_ACCOUNT_ID` | Found in Cloudflare dashboard right sidebar |
-| `PAYLOAD_URL` | Your CMS URL, e.g. `https://cms.yourcompany.com` |
-| `PAYLOAD_API_KEY` | A dedicated CI user's API key (super-admin; don't reuse your personal one) |
-| `DEPLOY_REPORT_TOKEN` | **Recommended.** Same value as `DEPLOY_REPORT_TOKEN` in Payload `.env` on the CMS server. CI sends header `x-deploy-report-token`. Without this (and without a valid super-admin `PAYLOAD_API_KEY`), deploy status reports return 401. |
-| `CLOUDFLARE_WORKERS_DEV_SUBDOMAIN` | Optional. Account workers.dev subdomain used to build `https://<slug>.<subdomain>.workers.dev` when wrangler output cannot be parsed |
-| `EXTERNAL_REPO_GITHUB_TOKEN` | **Required for external client repos.** Fine-grained or classic PAT with **read** access to each client repo (e.g. `zbseollp/keukenfaqs`). The built-in `GITHUB_TOKEN` only sees the astropayload repo — checkout of other repos fails with "Repository not found". Can be the same PAT as Payload `GITHUB_TOKEN` if scoped to those repos. |
-| `DEPLOY_REPORT_TOKEN` | **Required for CI blog import** (`POST /api/tenants/import-blog-content`). Same value as on the CMS server. |
-| `PAYLOAD_API_KEY` | Optional for auto-import if not using `DEPLOY_REPORT_TOKEN`; must be a **super-admin** API key (tenant editors get 403 on `POST /api/blog-posts`). |
+| `LPM_SECRETS_URL` | `https://lpm-payload-secrets.<account>.workers.dev` |
+| `LPM_SECRETS_TOKEN` | Same as Worker `SECRETS_GITHUB_TOKEN` (or `SECRETS_ACCESS_TOKEN`) |
 
-These get injected into `tenant-deploy.yml`, `tenant-scaffold.yml`, and `tenant-repo-setup.yml` at runtime. **Do not** add `DATABASE_URI` or `PAYLOAD_SECRET` to GitHub — CI never connects to Postgres directly.
+Workflows call `.github/scripts/load-cloudflare-secrets.sh`, which `GET`s `/v1/secrets?role=github` and writes `PAYLOAD_URL`, `PAYLOAD_API_KEY`, `DEPLOY_REPORT_TOKEN`, Cloudflare tokens, etc. into `GITHUB_ENV`. GitHub-hosted runners have no stable IP, so the Worker authenticates this role with the bearer token only.
+
+**Do not** add `DATABASE_URI` or `PAYLOAD_SECRET` to GitHub — CI never connects to Postgres directly, and those keys are not in the github role.
+
+Legacy GitHub secrets (`PAYLOAD_URL`, `PAYLOAD_API_KEY`, `DEPLOY_REPORT_TOKEN`, `CLOUDFLARE_*`, `EXTERNAL_REPO_GITHUB_TOKEN`) still work as a fallback when `LPM_SECRETS_URL` is unset.
 
 **External client repos** (tenant has `githubRepo` set): the PAT above must be able to **read** the client repo and open setup PRs. After the setup PR merges, either the platform workflow polls for merge (30 min) or the client repo workflow notifies Payload — add on the **client** repo:
 
@@ -563,12 +560,13 @@ All admin users (Super Admin, Tenant Admin, and Editor) must set up TOTP 2FA bef
 
 | Secret | Where it lives | Rotation cadence |
 |---|---|---|
-| `PAYLOAD_SECRET` | Payload host env vars | Yearly, or immediately on suspected leak |
-| `DATABASE_URI` | Payload host env vars | When Neon credentials rotate |
-| `R2_*` keys | Payload host env vars | Yearly, or on suspected leak |
-| `WEBHOOK_TOKEN` | Both Payload env AND `wrangler secret` on webhook | Yearly |
-| `GITHUB_TOKEN` | `wrangler secret` on webhook | Per token expiry (max 1 year for fine-grained PATs) |
-| `CLOUDFLARE_API_TOKEN` | GitHub Actions secret | Yearly |
+| `PAYLOAD_SECRET` | Cloudflare secrets Worker (Payload role) | Yearly, or immediately on suspected leak |
+| `DATABASE_URI` | Cloudflare secrets Worker (Payload role) | When Neon credentials rotate |
+| `R2_*` keys | Cloudflare secrets Worker (Payload role) | Yearly, or on suspected leak |
+| `WEBHOOK_TOKEN` | Cloudflare secrets Worker + `wrangler secret` on webhook | Yearly |
+| `GITHUB_TOKEN` | Cloudflare secrets Worker + `wrangler secret` on webhook | Per token expiry (max 1 year for fine-grained PATs) |
+| `CLOUDFLARE_API_TOKEN` | Cloudflare secrets Worker (github role) | Yearly |
+| `LPM_SECRETS_TOKEN` | Payload `.env`, Jenkins, GitHub Actions bootstrap | Yearly |
 | `PAYLOAD_API_KEY` (per user) | Per-user, in their admin profile | Per user, on offboarding |
 
 **Never commit any of these to git.** All `.env.example` files in this repo show the **shape** only; the real `.env` is gitignored.

@@ -7,7 +7,6 @@ GITHUB_BRANCH="${github_branch:-main}"
 BLOG_PATH="${blog_content_path:-src/content/blog}"
 
 export TENANT GITHUB_REPO GITHUB_BRANCH
-export GH_FALLBACK_TOKEN="${EXTERNAL_REPO_GITHUB_TOKEN:-}"
 
 if [ -z "$TENANT" ]; then
   echo "tenant_slug is required" >&2
@@ -15,6 +14,9 @@ if [ -z "$TENANT" ]; then
 fi
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# shellcheck source=load-cloudflare-secrets.sh
+source "$SCRIPT_DIR/load-cloudflare-secrets.sh"
+export GH_FALLBACK_TOKEN="${EXTERNAL_REPO_GITHUB_TOKEN:-}"
 WORKSPACE="${WORKSPACE:-$(pwd)}"
 cd "$WORKSPACE"
 

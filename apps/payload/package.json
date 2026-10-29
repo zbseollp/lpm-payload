@@ -6,8 +6,8 @@
   "scripts": {
     "dev": "cross-env NODE_OPTIONS=--no-deprecation next dev",
     "build": "cross-env NODE_OPTIONS=--no-deprecation next build",
-    "start": "cross-env NODE_OPTIONS=--no-deprecation next start",
-    "start:prod": "cross-env NODE_ENV=production NODE_OPTIONS=--no-deprecation next start -p 3000",
+    "start": "cross-env NODE_OPTIONS=--no-deprecation node scripts/run-with-cloudflare-secrets.mjs next start",
+    "start:prod": "cross-env NODE_ENV=production NODE_OPTIONS=--no-deprecation node scripts/run-with-cloudflare-secrets.mjs next start -p 3000",
     "deploy:prod": "pnpm run build && pnpm run start:prod",
     "lint": "next lint",
     "typecheck": "tsc --noEmit",

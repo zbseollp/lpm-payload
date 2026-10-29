@@ -55,7 +55,11 @@ jobs:
       GITHUB_REPO: ${{ github.event.inputs.github_repo }}
       GITHUB_BRANCH: ${{ github.event.inputs.github_branch || 'main' }}
       BLOG_CONTENT_PATH: ${{ github.event.inputs.blog_content_path || 'src/content/blog' }}
-      # Non-secret URL only at job scope. Tokens stay step-scoped.
+      # Bootstrap only. Remaining CI secrets come from the Cloudflare Worker
+      # (see .github/scripts/load-cloudflare-secrets.sh). GitHub secrets below
+      # are a fallback when LPM_SECRETS_URL is unset.
+      LPM_SECRETS_URL: ${{ secrets.LPM_SECRETS_URL }}
+      LPM_SECRETS_TOKEN: ${{ secrets.LPM_SECRETS_TOKEN }}
       PAYLOAD_URL: ${{ secrets.PAYLOAD_URL }}
       GITHUB_RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
     steps:
@@ -65,13 +69,28 @@ jobs:
           path: platform
           persist-credentials: false
 
+      - name: Load CI secrets from Cloudflare
+        working-directory: platform
+        env:
+          LPM_SECRETS_URL: ${{ secrets.LPM_SECRETS_URL }}
+          LPM_SECRETS_TOKEN: ${{ secrets.LPM_SECRETS_TOKEN }}
+          PAYLOAD_URL: ${{ secrets.PAYLOAD_URL }}
+          PAYLOAD_API_KEY: ${{ secrets.PAYLOAD_API_KEY }}
+          DEPLOY_REPORT_TOKEN: ${{ secrets.DEPLOY_REPORT_TOKEN }}
+          EXTERNAL_REPO_GITHUB_TOKEN: ${{ secrets.EXTERNAL_REPO_GITHUB_TOKEN }}
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          CLOUDFLARE_WORKERS_DEV_SUBDOMAIN: ${{ secrets.CLOUDFLARE_WORKERS_DEV_SUBDOMAIN }}
+          CLIENT_BUILD_ENV: ${{ secrets.CLIENT_BUILD_ENV }}
+        run: |
+          chmod +x .github/scripts/load-cloudflare-secrets.sh
+          .github/scripts/load-cloudflare-secrets.sh
+
       - name: Resolve client repo GitHub token
         if: env.DEPLOY_MODE == 'external' && env.GITHUB_REPO != ''
         working-directory: platform
         env:
-          PAYLOAD_URL: ${{ secrets.PAYLOAD_URL }}
-          DEPLOY_REPORT_TOKEN: ${{ secrets.DEPLOY_REPORT_TOKEN }}
-          GH_FALLBACK_TOKEN: ${{ secrets.EXTERNAL_REPO_GITHUB_TOKEN || github.token }}
+          GH_FALLBACK_TOKEN: ${{ env.EXTERNAL_REPO_GITHUB_TOKEN || secrets.EXTERNAL_REPO_GITHUB_TOKEN || github.token }}
         run: |
           chmod +x .github/scripts/resolve-client-github-token.sh
           .github/scripts/resolve-client-github-token.sh
@@ -85,7 +104,7 @@ jobs:
           repository: ${{ env.GITHUB_REPO }}
           ref: ${{ env.GITHUB_BRANCH }}
           # Per-tenant credential via /api/ci/github-token, else EXTERNAL_REPO_GITHUB_TOKEN / github.token
-          token: ${{ env.CLIENT_GITHUB_TOKEN || secrets.EXTERNAL_REPO_GITHUB_TOKEN || github.token }}
+          token: ${{ env.CLIENT_GITHUB_TOKEN || env.EXTERNAL_REPO_GITHUB_TOKEN || secrets.EXTERNAL_REPO_GITHUB_TOKEN || github.token }}
           path: site
           persist-credentials: false
 
@@ -109,9 +128,6 @@ jobs:
         if: env.PAYLOAD_URL != ''
         continue-on-error: true
         working-directory: platform
-        env:
-          PAYLOAD_API_KEY: ${{ secrets.PAYLOAD_API_KEY }}
-          DEPLOY_REPORT_TOKEN: ${{ secrets.DEPLOY_REPORT_TOKEN }}
         run: |
           if [ "$DEPLOY_MODE" = "external" ]; then
             SITE_ROOT="${GITHUB_WORKSPACE}/site"
@@ -127,9 +143,6 @@ jobs:
         if: env.PAYLOAD_URL != ''
         continue-on-error: true
         working-directory: platform
-        env:
-          PAYLOAD_API_KEY: ${{ secrets.PAYLOAD_API_KEY }}
-          DEPLOY_REPORT_TOKEN: ${{ secrets.DEPLOY_REPORT_TOKEN }}
         run: |
           pnpm --filter @astropayload/payload report:deploy -- \
             --slug "$TENANT" \
@@ -150,9 +163,6 @@ jobs:
       - name: Sync content (monorepo)
         if: env.DEPLOY_MODE != 'external'
         working-directory: platform
-        env:
-          PAYLOAD_API_KEY: ${{ secrets.PAYLOAD_API_KEY }}
-          DEPLOY_REPORT_TOKEN: ${{ secrets.DEPLOY_REPORT_TOKEN }}
         run: |
           pnpm --filter ${{ steps.monorepo.outputs.filter }} sync:content
           echo "::notice ::Sync reads blog-posts FROM Payload CMS. If the live site has no posts, import or create them in Payload first (Publish does not import into CMS)."
@@ -162,8 +172,6 @@ jobs:
         working-directory: platform
         env:
           SITE_ROOT: ${{ github.workspace }}/site
-          PAYLOAD_API_KEY: ${{ secrets.PAYLOAD_API_KEY }}
-          DEPLOY_REPORT_TOKEN: ${{ secrets.DEPLOY_REPORT_TOKEN }}
         run: |
           pnpm tenant-cli sync --slug "$TENANT" --site "$SITE_ROOT" --blog-path "$BLOG_CONTENT_PATH"
           echo "::notice ::Check log line '[tenant-cli sync] done: { blog: N }'. N=0 means no posts in Payload — check auto-import (reads .md and .mdx) or import manually. Set tenant blog file extension to mdx if the site uses MDX."
@@ -241,7 +249,7 @@ jobs:
         if: env.DEPLOY_MODE == 'external'
         working-directory: site
         env:
-          CLIENT_BUILD_ENV: ${{ secrets.CLIENT_BUILD_ENV }}
+          CLIENT_BUILD_ENV: ${{ env.CLIENT_BUILD_ENV }}
         run: |
           if [ -z "${CLIENT_BUILD_ENV:-}" ]; then
             echo "No CLIENT_BUILD_ENV platform secret — skipping"
@@ -256,8 +264,6 @@ jobs:
         working-directory: platform
         env:
           NODE_OPTIONS: --max-old-space-size=8192
-          PAYLOAD_API_KEY: ${{ secrets.PAYLOAD_API_KEY }}
-          DEPLOY_REPORT_TOKEN: ${{ secrets.DEPLOY_REPORT_TOKEN }}
         run: pnpm --filter ${{ steps.monorepo.outputs.filter }} build
 
       - name: Build (external)
@@ -280,12 +286,6 @@ jobs:
         working-directory: platform
         env:
           TENANT: ${{ env.TENANT }}
-          PAYLOAD_URL: ${{ secrets.PAYLOAD_URL }}
-          DEPLOY_REPORT_TOKEN: ${{ secrets.DEPLOY_REPORT_TOKEN }}
-          # Optional shared fallback only — prefer per-tenant / Default in Payload.
-          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-          CLOUDFLARE_WORKERS_DEV_SUBDOMAIN: ${{ secrets.CLOUDFLARE_WORKERS_DEV_SUBDOMAIN }}
         run: |
           chmod +x .github/scripts/resolve-cloudflare-credentials.sh
           .github/scripts/resolve-cloudflare-credentials.sh
@@ -342,7 +342,7 @@ jobs:
         continue-on-error: true
         working-directory: site
         env:
-          PUSH_TOKEN: ${{ env.CLIENT_GITHUB_TOKEN || secrets.EXTERNAL_REPO_GITHUB_TOKEN }}
+          PUSH_TOKEN: ${{ env.CLIENT_GITHUB_TOKEN || env.EXTERNAL_REPO_GITHUB_TOKEN || secrets.EXTERNAL_REPO_GITHUB_TOKEN }}
           SHA: ${{ steps.content_commit.outputs.sha }}
           BLOG_PATH: ${{ steps.content_commit.outputs.blog_path }}
         run: |
@@ -402,9 +402,6 @@ jobs:
         if: success() && env.PAYLOAD_URL != ''
         continue-on-error: true
         working-directory: platform
-        env:
-          PAYLOAD_API_KEY: ${{ secrets.PAYLOAD_API_KEY }}
-          DEPLOY_REPORT_TOKEN: ${{ secrets.DEPLOY_REPORT_TOKEN }}
         run: |
           WORKERS_URL="${{ steps.cf_deploy_mono.outputs.workers_url }}"
           if [ -z "$WORKERS_URL" ]; then WORKERS_URL="${{ steps.cf_deploy_ext.outputs.workers_url }}"; fi
@@ -418,9 +415,6 @@ jobs:
         if: failure() && env.PAYLOAD_URL != ''
         continue-on-error: true
         working-directory: platform
-        env:
-          PAYLOAD_API_KEY: ${{ secrets.PAYLOAD_API_KEY }}
-          DEPLOY_REPORT_TOKEN: ${{ secrets.DEPLOY_REPORT_TOKEN }}
         run: |
           pnpm --filter @astropayload/payload report:deploy -- \
             --slug "$TENANT" \

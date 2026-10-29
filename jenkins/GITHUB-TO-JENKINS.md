@@ -28,6 +28,7 @@ Shared scripts (reuse across jobs):
 
 | Script | Replaces GHA |
 |--------|----------------|
+| `load-cloudflare-secrets.sh` | `.github/scripts/load-cloudflare-secrets.sh` (`role=jenkins`) |
 | `checkout-platform.sh` | `actions/checkout` of platform repo |
 | `checkout-client-repo.sh` | `actions/checkout` of client repo |
 | `resolve-client-github-token.sh` | `.github/scripts/resolve-client-github-token.sh` |
@@ -42,7 +43,7 @@ Shared scripts (reuse across jobs):
 |----------------|---------|
 | `on: workflow_dispatch` + `inputs:` | `parameters { string(...) choice(...) }` |
 | `on: schedule` / `cron:` | `triggers { cron('0 * * * *') }` |
-| `secrets.*` | `credentials('astropayload-…')` in `environment` |
+| `secrets.*` | Cloudflare Worker via `load-cloudflare-secrets.sh`, or `credentials('astropayload-…')` fallback |
 | `env:` at job level | `environment { VAR = '...' }` or export in shell script |
 | `runs-on: ubuntu-latest` | `agent any` (Linux agent with git + curl) |
 | `timeout-minutes: 30` | `options { timeout(time: 30, unit: 'MINUTES') }` |

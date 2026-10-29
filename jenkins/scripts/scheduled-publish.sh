@@ -2,6 +2,10 @@
 # Hourly scheduled publish — promotes due posts via Payload API (no build on CMS VPS).
 set -euo pipefail
 
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# shellcheck source=load-cloudflare-secrets.sh
+source "$SCRIPT_DIR/load-cloudflare-secrets.sh"
+
 PAYLOAD_URL="${PAYLOAD_URL:-}"
 DEPLOY_REPORT_TOKEN="${DEPLOY_REPORT_TOKEN:-}"
 
@@ -10,7 +14,6 @@ if [ -z "$PAYLOAD_URL" ] || [ -z "$DEPLOY_REPORT_TOKEN" ]; then
   exit 1
 fi
 
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 WORKSPACE="${WORKSPACE:-$(pwd)}"
 cd "$WORKSPACE"
 

@@ -46,9 +46,9 @@ jobs:
       TENANT_DOMAIN: ${{ github.event.inputs.tenant_domain }}
       TENANT_NAME: ${{ github.event.inputs.tenant_name }}
       TEMPLATE: ${{ github.event.inputs.template }}
+      LPM_SECRETS_URL: ${{ secrets.LPM_SECRETS_URL }}
+      LPM_SECRETS_TOKEN: ${{ secrets.LPM_SECRETS_TOKEN }}
       PAYLOAD_URL: ${{ secrets.PAYLOAD_URL }}
-      PAYLOAD_API_KEY: ${{ secrets.PAYLOAD_API_KEY }}
-      DEPLOY_REPORT_TOKEN: ${{ secrets.DEPLOY_REPORT_TOKEN }}
       GITHUB_RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
     steps:
       - name: Validate slug
@@ -63,6 +63,17 @@ jobs:
         with:
           # Need full history so we can push a new branch.
           fetch-depth: 0
+
+      - name: Load CI secrets from Cloudflare
+        env:
+          LPM_SECRETS_URL: ${{ secrets.LPM_SECRETS_URL }}
+          LPM_SECRETS_TOKEN: ${{ secrets.LPM_SECRETS_TOKEN }}
+          PAYLOAD_URL: ${{ secrets.PAYLOAD_URL }}
+          PAYLOAD_API_KEY: ${{ secrets.PAYLOAD_API_KEY }}
+          DEPLOY_REPORT_TOKEN: ${{ secrets.DEPLOY_REPORT_TOKEN }}
+        run: |
+          chmod +x .github/scripts/load-cloudflare-secrets.sh
+          .github/scripts/load-cloudflare-secrets.sh
 
       - name: Fail fast if folder already exists
         run: |

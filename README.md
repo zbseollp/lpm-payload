@@ -6,6 +6,7 @@ A multi-tenant **blog** platform. **One Payload CMS** manages many sites; **each
 astropayload/
 ├── apps/
 │   ├── payload/              # Single Payload v3 CMS (Postgres + R2)
+│   ├── secrets/              # Cloudflare Worker that serves CI/Payload secrets
 │   └── sites/
 │       └── keukenfaqs/       # First tenant — Astro on Cloudflare Workers
 ├── packages/

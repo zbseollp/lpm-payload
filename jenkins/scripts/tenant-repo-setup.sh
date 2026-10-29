@@ -18,6 +18,8 @@ if [ -z "$TENANT" ] || [ -z "$GITHUB_REPO" ]; then
 fi
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# shellcheck source=load-cloudflare-secrets.sh
+source "$SCRIPT_DIR/load-cloudflare-secrets.sh"
 WORKSPACE="${WORKSPACE:-$(pwd)}"
 cd "$WORKSPACE"
 

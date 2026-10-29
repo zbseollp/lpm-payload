@@ -16,7 +16,7 @@ export PAYLOAD_URL=http://localhost:3000
 export PAYLOAD_API_KEY=<your-api-key>
 ```
 
-Platform GitHub repo secrets (for CI): `PAYLOAD_URL`, `PAYLOAD_API_KEY`, `GITHUB_TOKEN`, `CLOUDFLARE_*`, optional `DEPLOY_REPORT_TOKEN`.
+Platform GitHub repo secrets (for CI): prefer `LPM_SECRETS_URL` + `LPM_SECRETS_TOKEN` (Cloudflare Worker; see [apps/secrets/README.md](../apps/secrets/README.md)). Legacy fallback: `PAYLOAD_URL`, `PAYLOAD_API_KEY`, `CLOUDFLARE_*`, optional `DEPLOY_REPORT_TOKEN`.
 
 ---
 

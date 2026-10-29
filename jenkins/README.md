@@ -77,6 +77,23 @@ Enable **This project is parameterized** (Jenkins reads parameters from the Jenk
 
 For `scheduled-publish`, the Jenkinsfile includes `cron('0 * * * *')` — enable **Build periodically** or use Pipeline triggers.
 
+## Store secrets in Cloudflare (not on the VPS)
+
+Deploy [apps/secrets](../apps/secrets/README.md), then on **each** machine keep only:
+
+```
+LPM_SECRETS_URL=https://lpm-payload-secrets.<account>.workers.dev
+LPM_SECRETS_TOKEN=<SECRETS_ACCESS_TOKEN>
+```
+
+GitHub Actions uses the same Worker with `role=github` (see `.github/scripts/load-cloudflare-secrets.sh`). Jobs **do not require** the old `credentials('astropayload-…')` bindings once the Worker URL is set. At the start of each script they run `jenkins/scripts/load-cloudflare-secrets.sh`, which `GET`s:
+
+`LPM_SECRETS_URL/v1/secrets?role=jenkins`
+
+with `Authorization: Bearer LPM_SECRETS_TOKEN`. The Worker also checks the Jenkins VPS IP (`ALLOWED_IPS`).
+
+Better: store the token as Secret text ID `lpm-secrets-token` (optional). `jenkins/withJobSecrets.groovy` binds it when present.
+
 ## 4. Jenkins credentials (IDs must match Jenkinsfiles)
 
 Create these under **Manage Jenkins → Credentials** as **Secret text** (unless noted):

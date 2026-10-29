@@ -1,5 +1,11 @@
 import { isPayloadApiDebug, payloadLog } from './lib/payloadLogger'
 
+export async function register(): Promise<void> {
+  if (process.env.NEXT_RUNTIME === 'edge') return
+  const { applyCloudflareSecrets } = await import('./lib/loadCloudflareSecrets')
+  await applyCloudflareSecrets()
+}
+
 /**
  * Next.js hook — logs unhandled request errors (including failed Server Actions).
  * @see https://nextjs.org/docs/app/api-reference/file-conventions/instrumentation

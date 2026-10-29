@@ -27,19 +27,32 @@ jobs:
       GITHUB_REPO: ${{ github.event.inputs.github_repo }}
       GITHUB_BRANCH: ${{ github.event.inputs.github_branch || 'main' }}
       BLOG_PATH: ${{ github.event.inputs.blog_content_path || 'src/content/blog' }}
+      LPM_SECRETS_URL: ${{ secrets.LPM_SECRETS_URL }}
+      LPM_SECRETS_TOKEN: ${{ secrets.LPM_SECRETS_TOKEN }}
       PAYLOAD_URL: ${{ secrets.PAYLOAD_URL }}
-      DEPLOY_REPORT_TOKEN: ${{ secrets.DEPLOY_REPORT_TOKEN }}
     steps:
       - name: Checkout platform
         uses: actions/checkout@v4
         with:
           path: platform
 
+      - name: Load CI secrets from Cloudflare
+        working-directory: platform
+        env:
+          LPM_SECRETS_URL: ${{ secrets.LPM_SECRETS_URL }}
+          LPM_SECRETS_TOKEN: ${{ secrets.LPM_SECRETS_TOKEN }}
+          PAYLOAD_URL: ${{ secrets.PAYLOAD_URL }}
+          PAYLOAD_API_KEY: ${{ secrets.PAYLOAD_API_KEY }}
+          DEPLOY_REPORT_TOKEN: ${{ secrets.DEPLOY_REPORT_TOKEN }}
+          EXTERNAL_REPO_GITHUB_TOKEN: ${{ secrets.EXTERNAL_REPO_GITHUB_TOKEN }}
+        run: |
+          chmod +x .github/scripts/load-cloudflare-secrets.sh
+          .github/scripts/load-cloudflare-secrets.sh
+
       - name: Resolve client repo GitHub token
         working-directory: platform
         env:
-          DEPLOY_REPORT_TOKEN: ${{ secrets.DEPLOY_REPORT_TOKEN }}
-          GH_FALLBACK_TOKEN: ${{ secrets.EXTERNAL_REPO_GITHUB_TOKEN || github.token }}
+          GH_FALLBACK_TOKEN: ${{ env.EXTERNAL_REPO_GITHUB_TOKEN || secrets.EXTERNAL_REPO_GITHUB_TOKEN || github.token }}
         run: |
           chmod +x .github/scripts/resolve-client-github-token.sh
           .github/scripts/resolve-client-github-token.sh
@@ -49,7 +62,7 @@ jobs:
         with:
           repository: ${{ env.GITHUB_REPO }}
           ref: ${{ env.GITHUB_BRANCH }}
-          token: ${{ env.CLIENT_GITHUB_TOKEN || secrets.EXTERNAL_REPO_GITHUB_TOKEN || github.token }}
+          token: ${{ env.CLIENT_GITHUB_TOKEN || env.EXTERNAL_REPO_GITHUB_TOKEN || secrets.EXTERNAL_REPO_GITHUB_TOKEN || github.token }}
           path: site
 
       - name: Apply integration files
@@ -105,10 +118,6 @@ jobs:
       - name: Report setup PR opened
         if: steps.pr.outputs.pr_url != ''
         working-directory: platform
-        env:
-          PAYLOAD_URL: ${{ secrets.PAYLOAD_URL }}
-          DEPLOY_REPORT_TOKEN: ${{ secrets.DEPLOY_REPORT_TOKEN }}
-          PAYLOAD_API_KEY: ${{ secrets.PAYLOAD_API_KEY }}
         run: |
           pnpm --filter @astropayload/payload report:github-setup -- \
             --slug "$TENANT" \
@@ -158,9 +167,6 @@ jobs:
         if: steps.pr.outputs.pr_number != ''
         continue-on-error: true
         working-directory: platform
-        env:
-          PAYLOAD_URL: ${{ secrets.PAYLOAD_URL }}
-          PAYLOAD_API_KEY: ${{ secrets.PAYLOAD_API_KEY }}
         run: |
           MERGED=$(cd ../site && gh pr view "${{ steps.pr.outputs.pr_number }}" --json merged -q .merged)
           if [ "$MERGED" != "true" ]; then
@@ -175,10 +181,6 @@ jobs:
       - name: Report setup ready (platform poll)
         if: steps.pr.outputs.pr_number != ''
         working-directory: platform
-        env:
-          PAYLOAD_URL: ${{ secrets.PAYLOAD_URL }}
-          DEPLOY_REPORT_TOKEN: ${{ secrets.DEPLOY_REPORT_TOKEN }}
-          PAYLOAD_API_KEY: ${{ secrets.PAYLOAD_API_KEY }}
         run: |
           MERGED=$(cd ../site && gh pr view "${{ steps.pr.outputs.pr_number }}" --json merged -q .merged)
           if [ "$MERGED" != "true" ]; then

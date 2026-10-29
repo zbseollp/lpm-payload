@@ -10,20 +10,26 @@ pipeline {
   }
 
   environment {
-    PAYLOAD_URL = credentials('astropayload-payload-url')
-    DEPLOY_REPORT_TOKEN = credentials('astropayload-deploy-report-token')
     PAYLOAD_API_KEY = "${env.PAYLOAD_API_KEY ?: ''}"
-    PLATFORM_GIT_TOKEN = credentials('astropayload-platform-github-token')
     PLATFORM_GIT_BRANCH = "${env.PLATFORM_GIT_BRANCH ?: 'main'}"
+    LPM_SECRETS_URL = "${env.LPM_SECRETS_URL ?: ''}"
+    LPM_SECRETS_TOKEN = "${env.LPM_SECRETS_TOKEN ?: ''}"
+    ASTROPAYLOAD_SECRETS_URL = "${env.ASTROPAYLOAD_SECRETS_URL ?: ''}"
+    ASTROPAYLOAD_SECRETS_TOKEN = "${env.ASTROPAYLOAD_SECRETS_TOKEN ?: ''}"
   }
 
   stages {
     stage('Scheduled publish') {
       steps {
-        sh '''
-          chmod +x jenkins/scripts/*.sh
-          bash jenkins/scripts/scheduled-publish.sh
-        '''
+        script {
+          def secrets = load 'jenkins/withJobSecrets.groovy'
+          secrets.withJobSecrets {
+            sh '''
+              chmod +x jenkins/scripts/*.sh
+              bash jenkins/scripts/scheduled-publish.sh
+            '''
+          }
+        }
       }
     }
   }

@@ -16,26 +16,29 @@ pipeline {
   }
 
   environment {
-    PAYLOAD_URL = credentials('astropayload-payload-url')
-    DEPLOY_REPORT_TOKEN = credentials('astropayload-deploy-report-token')
     PAYLOAD_API_KEY = "${env.PAYLOAD_API_KEY ?: ''}"
-    EXTERNAL_REPO_GITHUB_TOKEN = credentials('astropayload-external-repo-github-token')
     PLATFORM_GIT_URL = "${env.PLATFORM_GIT_URL ?: ''}"
     PLATFORM_GIT_BRANCH = "${env.PLATFORM_GIT_BRANCH ?: 'main'}"
-    PLATFORM_GIT_TOKEN = credentials('astropayload-platform-github-token')
     GITHUB_OWNER = "${env.GITHUB_OWNER ?: ''}"
     GITHUB_REPO = "${env.GITHUB_REPO ?: 'astropayload'}"
-    CLOUDFLARE_API_TOKEN = credentials('astropayload-cloudflare-api-token')
-    CLOUDFLARE_ACCOUNT_ID = credentials('astropayload-cloudflare-account-id')
     CLOUDFLARE_WORKERS_DEV_SUBDOMAIN = "${env.CLOUDFLARE_WORKERS_DEV_SUBDOMAIN ?: ''}"
-    // Optional agent drop directory for per-tenant dotenv files: <dir>/<tenant_slug>.env
+    ALLOWED_GITHUB_ORGS = "${env.ALLOWED_GITHUB_ORGS ?: ''}"
+    CLIENT_REPO_SECURITY_SCAN = "${env.CLIENT_REPO_SECURITY_SCAN ?: '1'}"
     ASTROPAYLOAD_CLIENT_ENV_DIR = "${env.ASTROPAYLOAD_CLIENT_ENV_DIR ?: "${env.JENKINS_HOME}/astropayload-client-env"}"
+    LPM_SECRETS_URL = "${env.LPM_SECRETS_URL ?: ''}"
+    LPM_SECRETS_TOKEN = "${env.LPM_SECRETS_TOKEN ?: ''}"
+    ASTROPAYLOAD_SECRETS_URL = "${env.ASTROPAYLOAD_SECRETS_URL ?: ''}"
+    ASTROPAYLOAD_SECRETS_TOKEN = "${env.ASTROPAYLOAD_SECRETS_TOKEN ?: ''}"
+    R2_PUBLIC_URL = "${env.R2_PUBLIC_URL ?: ''}"
+    PUBLIC_R2_URL = "${env.PUBLIC_R2_URL ?: env.R2_PUBLIC_URL ?: ''}"
+    PUBLIC_PAYLOAD_MEDIA_URL = "${env.PUBLIC_PAYLOAD_MEDIA_URL ?: env.R2_PUBLIC_URL ?: ''}"
   }
 
   stages {
     stage('Deploy tenant') {
       steps {
         script {
+          def secrets = load 'jenkins/withJobSecrets.groovy'
           def siteEnvCredId = "astropayload-site-env-${params.tenant_slug}"
           def runDeploy = {
             sh '''
@@ -44,23 +47,21 @@ pipeline {
             '''
           }
 
-          // Optional Secret file credential (dotenv). Missing credential is OK.
-          def fileCreds = com.cloudbees.plugins.credentials.CredentialsProvider.lookupCredentials(
-            org.jenkinsci.plugins.plaincredentials.FileCredentials.class,
-            jenkins.model.Jenkins.instance,
-            null,
-            null
-          )
-          def hasSiteEnv = fileCreds.any { it.id == siteEnvCredId }
-
-          if (hasSiteEnv) {
-            echo "Binding optional client build env credential: ${siteEnvCredId}"
-            withCredentials([file(credentialsId: siteEnvCredId, variable: 'CLIENT_BUILD_ENV_FILE')]) {
-              runDeploy()
+          secrets.withJobSecrets {
+            try {
+              withCredentials([file(credentialsId: siteEnvCredId, variable: 'CLIENT_BUILD_ENV_FILE')]) {
+                echo "Binding optional client build env credential: ${siteEnvCredId}"
+                runDeploy()
+              }
+            } catch (err) {
+              def msg = "${err}"
+              if (msg.contains('CredentialNotFound') || msg.contains('could not find credentials') || msg.contains('Could not find credentials')) {
+                echo "No Jenkins Secret file '${siteEnvCredId}' — will try ASTROPAYLOAD_CLIENT_ENV_DIR/${params.tenant_slug}.env if present"
+                runDeploy()
+              } else {
+                throw err
+              }
             }
-          } else {
-            echo "No Jenkins Secret file '${siteEnvCredId}' — will try ASTROPAYLOAD_CLIENT_ENV_DIR/${params.tenant_slug}.env if present"
-            runDeploy()
           }
         }
       }
