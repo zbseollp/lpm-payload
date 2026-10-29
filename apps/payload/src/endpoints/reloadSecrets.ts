@@ -14,17 +14,22 @@ function json(body: Record<string, unknown>, status = 200): Response {
   })
 }
 
-function pm2AppName(): string {
-  return process.env.PM2_APP_NAME?.trim() || 'payload'
+function pm2Target(): string {
+  return (
+    process.env.PM2_APP_NAME?.trim() ||
+    process.env.pm_id?.trim() ||
+    process.env.name?.trim() ||
+    'payload'
+  )
 }
 
 function schedulePm2Reload(): void {
-  const app = pm2AppName()
+  const target = pm2Target()
   const bin = process.env.PM2_BIN?.trim() || 'pm2'
   setTimeout(() => {
-    execFile(bin, ['reload', app, '--update-env'], { timeout: 20_000 }, (err) => {
+    execFile(bin, ['reload', target, '--update-env'], { timeout: 20_000 }, (err) => {
       if (err) {
-        console.error(`[lpm-payload] pm2 reload failed (${err.message}); exiting so PM2 autorestart can recover`)
+        console.error(`[lpm-payload] pm2 reload ${target} failed (${err.message}); exiting so PM2 autorestart can recover`)
         process.exit(0)
       }
     })
@@ -63,7 +68,7 @@ export const reloadSecretsEndpoint: Endpoint = {
       {
         ok: true,
         reloading: true,
-        process: pm2AppName(),
+        process: pm2Target(),
         message: 'PM2 reload scheduled. Payload will fetch Cloudflare secrets on the next boot.',
       },
       202,
