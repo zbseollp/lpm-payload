@@ -19,6 +19,15 @@ export const PlatformSettings: GlobalConfig = {
   },
   fields: [
     {
+      name: 'reloadCloudflareSecrets',
+      type: 'ui',
+      admin: {
+        components: {
+          Field: '/components/ReloadSecrets.client#ReloadSecretsPanel',
+        },
+      },
+    },
+    {
       name: 'ciProvider',
       type: 'select',
       defaultValue: 'github_actions',

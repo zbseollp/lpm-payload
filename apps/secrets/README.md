@@ -99,7 +99,7 @@ LPM_SECRETS_URL=https://lpm-payload-secrets.<account>.workers.dev
 LPM_SECRETS_TOKEN=<same as SECRETS_ACCESS_TOKEN>
 ```
 
-Restart Payload after the first setup. Later rotations only need a Cloudflare secret change + `pm2 restart payload`.
+Restart Payload after the first setup. Later rotations: change the Worker secret, then click **Reload env** in admin (super-admin), or `pm2 reload payload`.
 
 `NEXT_SERVER_ACTIONS_ENCRYPTION_KEY` is needed at **`pnpm build`**. Either leave it in `.env` for builds, or wrap: fetch secrets, then build.
 
@@ -107,7 +107,7 @@ Restart Payload after the first setup. Later rotations only need a Cloudflare se
 
 1. Cloudflare dashboard → Worker → Secrets → edit the one key
    or `pnpm wrangler secret put KEY`
-2. Payload: `pm2 restart payload`
+2. Payload: Admin → **Reload env**, or `pm2 reload payload`
 3. GitHub Actions: next workflow run
 
 Rotate `SECRETS_ACCESS_TOKEN` / `SECRETS_GITHUB_TOKEN` by putting a new value in Cloudflare, then update Payload and the GitHub repo secret.
