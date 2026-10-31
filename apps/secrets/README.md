@@ -13,9 +13,14 @@ Do **not** put `DATABASE_URI`, GitHub PATs, or Cloudflare API tokens in `.env` /
 
 ## Deploy the Worker
 
+The account is pinned in `wrangler.jsonc` (`54b144d6836138e432688b9d5f4ec8aa`, **zbseo.uk** — not
+the zb-marketing account that holds the tenant sites), so a deploy needs a token for *that*
+account; the default `wrangler login` on the Mac is zb-marketing and will be rejected rather than
+silently creating a second Worker.
+
 ```sh
 cd apps/secrets
-pnpm deploy
+CLOUDFLARE_API_TOKEN=$(cat ~/.cf/zbseo-uk-workers.token) pnpm deploy
 # note the URL, e.g. https://lpm-payload-secret.<account>.workers.dev
 
 # Bootstrap token (also stored on Payload)
@@ -75,7 +80,7 @@ and posts stay in the CMS forever. (It previously ran as `.github/workflows/sche
 removed 2026-06-29 in `2a42cd6`, and was replaced only by `jenkins/Jenkinsfile.scheduled-publish` —
 which never ran, because Platform settings has CI Provider = GitHub Actions.)
 
-Check it with: `wrangler tail lpm-payload-secret --format pretty` (look for `scheduled-publish`).
+Check it with: `CLOUDFLARE_API_TOKEN=$(cat ~/.cf/zbseo-uk-workers.token) wrangler tail lpm-payload-secret --format pretty` (look for `scheduled-publish`).
 
 Non-secret config (`GITHUB_OWNER`, `GITHUB_REPO`, `PAYLOAD_TOTP_ISSUER`) can be **plain variables** in the same Worker settings instead of secrets.
 
