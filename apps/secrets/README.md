@@ -20,7 +20,7 @@ silently creating a second Worker.
 
 ```sh
 cd apps/secrets
-CLOUDFLARE_API_TOKEN=$(cat ~/.cf/zbseo-uk-workers.token) pnpm deploy
+CLOUDFLARE_API_TOKEN=$(cat ~/.cf/zbseo-uk-workers.token) pnpm deploy   # = wrangler deploy --keep-vars
 # note the URL, e.g. https://lpm-payload-secret.<account>.workers.dev
 
 # Bootstrap token (also stored on Payload)
@@ -83,6 +83,11 @@ which never ran, because Platform settings has CI Provider = GitHub Actions.)
 Check it with: `CLOUDFLARE_API_TOKEN=$(cat ~/.cf/zbseo-uk-workers.token) wrangler tail lpm-payload-secret --format pretty` (look for `scheduled-publish`).
 
 Non-secret config (`GITHUB_OWNER`, `GITHUB_REPO`, `PAYLOAD_TOTP_ISSUER`) can be **plain variables** in the same Worker settings instead of secrets.
+
+`pnpm deploy` passes `--keep-vars`. Never run a bare `wrangler deploy` here: it would overwrite
+the dashboard-set `ALLOWED_IPS` with the empty placeholder in `wrangler.jsonc`, and `role=payload`
+would stop answering — Payload loses its secrets on the next restart. Secrets themselves are
+always preserved; plain vars are not.
 
 ## Allow only the Payload VPS IP
 
