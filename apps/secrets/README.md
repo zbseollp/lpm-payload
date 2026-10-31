@@ -1,6 +1,6 @@
 # Cloudflare secrets for Payload and GitHub Actions
 
-Keep **one** bootstrap token on each machine. Store the real secrets in Cloudflare (Workers → **lpm-payload-secrets** → Settings → Variables and Secrets). Rotate a value there; the next Payload restart / GitHub Actions run picks it up.
+Keep **one** bootstrap token on each machine. Store the real secrets in Cloudflare (Workers → **lpm-payload-secret** → Settings → Variables and Secrets). Rotate a value there; the next Payload restart / GitHub Actions run picks it up.
 
 You still need locally:
 
@@ -13,10 +13,15 @@ Do **not** put `DATABASE_URI`, GitHub PATs, or Cloudflare API tokens in `.env` /
 
 ## Deploy the Worker
 
+The account is pinned in `wrangler.jsonc` (`54b144d6836138e432688b9d5f4ec8aa`, **zbseo.uk** — not
+the zb-marketing account that holds the tenant sites), so a deploy needs a token for *that*
+account; the default `wrangler login` on the Mac is zb-marketing and will be rejected rather than
+silently creating a second Worker.
+
 ```sh
 cd apps/secrets
-pnpm deploy
-# note the URL, e.g. https://lpm-payload-secrets.<account>.workers.dev
+CLOUDFLARE_API_TOKEN=$(cat ~/.cf/zbseo-uk-workers.token) pnpm deploy   # = wrangler deploy --keep-vars
+# note the URL, e.g. https://lpm-payload-secret.<account>.workers.dev
 
 # Bootstrap token (also stored on Payload)
 openssl rand -hex 32
@@ -55,8 +60,40 @@ pnpm wrangler secret put CREDENTIALS_ENCRYPTION_KEY
 ```
 
 Or paste `worker.dashboard.js` into the Cloudflare dashboard Worker editor and deploy.
+`worker.dashboard.js` is maintained by hand alongside `src/index.ts` — the live Worker currently
+runs the dashboard copy, so **change both together or they drift**.
+
+## Hourly scheduled publish
+
+This Worker also carries the cron that promotes Payload posts from **Scheduled** to **Published**:
+
+```
+triggers.crons = ["0 * * * *"]   ->   POST $PAYLOAD_PUBLIC_SERVER_URL/api/scheduled-publish/run
+                                      header: x-deploy-report-token: $DEPLOY_REPORT_TOKEN
+```
+
+It lives here because `DEPLOY_REPORT_TOKEN` already exists here and Cloudflare secrets are
+write-only — a separate cron Worker would mean a second copy of the credential to rotate.
+
+Payload never promotes a scheduled post by itself; without this cron the Scheduled status is inert
+and posts stay in the CMS forever. (It previously ran as `.github/workflows/scheduled-publish.yml`,
+removed 2026-06-29 in `2a42cd6`, and was replaced only by `jenkins/Jenkinsfile.scheduled-publish` —
+which never ran, because Platform settings has CI Provider = GitHub Actions.)
+
+Check it with: `CLOUDFLARE_API_TOKEN=$(cat ~/.cf/zbseo-uk-workers.token) wrangler tail lpm-payload-secret --format pretty` (look for `scheduled-publish`).
 
 Non-secret config (`GITHUB_OWNER`, `GITHUB_REPO`, `PAYLOAD_TOTP_ISSUER`) can be **plain variables** in the same Worker settings instead of secrets.
+
+**Dashboard-managed vars must not be named in `wrangler.jsonc`.** `ALLOWED_IPS` is set in the
+dashboard and is deliberately absent from the config. It used to sit there as an empty placeholder,
+and every deploy wiped the live value: `--keep-vars` preserves only vars that are *absent* from the
+config — one declared there, even as `""`, is pushed and overwrites the dashboard. `role=payload`
+then answers "ALLOWED_IPS is not configured" and Payload loses its own secret load on the next
+restart. Secrets (`wrangler secret put`) are always preserved; plain vars are not.
+
+If a var does get clobbered, the old value is recoverable from the previous Worker version:
+`GET /accounts/{account}/workers/scripts/lpm-payload-secret/versions` then read that version's
+`resources.bindings` — plain-text values are readable there, unlike secrets.
 
 ## Allow only the Payload VPS IP
 
