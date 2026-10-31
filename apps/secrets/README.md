@@ -84,10 +84,16 @@ Check it with: `CLOUDFLARE_API_TOKEN=$(cat ~/.cf/zbseo-uk-workers.token) wrangle
 
 Non-secret config (`GITHUB_OWNER`, `GITHUB_REPO`, `PAYLOAD_TOTP_ISSUER`) can be **plain variables** in the same Worker settings instead of secrets.
 
-`pnpm deploy` passes `--keep-vars`. Never run a bare `wrangler deploy` here: it would overwrite
-the dashboard-set `ALLOWED_IPS` with the empty placeholder in `wrangler.jsonc`, and `role=payload`
-would stop answering — Payload loses its secrets on the next restart. Secrets themselves are
-always preserved; plain vars are not.
+**Dashboard-managed vars must not be named in `wrangler.jsonc`.** `ALLOWED_IPS` is set in the
+dashboard and is deliberately absent from the config. It used to sit there as an empty placeholder,
+and every deploy wiped the live value: `--keep-vars` preserves only vars that are *absent* from the
+config — one declared there, even as `""`, is pushed and overwrites the dashboard. `role=payload`
+then answers "ALLOWED_IPS is not configured" and Payload loses its own secret load on the next
+restart. Secrets (`wrangler secret put`) are always preserved; plain vars are not.
+
+If a var does get clobbered, the old value is recoverable from the previous Worker version:
+`GET /accounts/{account}/workers/scripts/lpm-payload-secret/versions` then read that version's
+`resources.bindings` — plain-text values are readable there, unlike secrets.
 
 ## Allow only the Payload VPS IP
 
