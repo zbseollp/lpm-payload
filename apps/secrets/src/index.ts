@@ -9,6 +9,11 @@
  * github / github_actions: token only — GitHub-hosted runners have no stable IP.
  *
  * Put each value with: wrangler secret put KEY
+ *
+ * Also runs the hourly scheduled-publish cron. Payload's "Scheduled" status is
+ * promoted to "Published" by an external caller, not by Payload itself, and
+ * DEPLOY_REPORT_TOKEN only exists here (Cloudflare secrets are write-only), so
+ * the caller lives in this Worker rather than duplicating the credential.
  */
 
 const PAYLOAD_KEYS = [
@@ -174,7 +179,39 @@ function unauthorized(): Response {
   })
 }
 
+/** POST /api/scheduled-publish/run — promotes due scheduled posts and dispatches their deploys. */
+async function runScheduledPublish(env: Env, cron: string): Promise<void> {
+  const base = (env.PAYLOAD_PUBLIC_SERVER_URL || env.PAYLOAD_INTERNAL_URL || '').trim().replace(/\/+$/, '')
+  const token = env.DEPLOY_REPORT_TOKEN?.trim()
+  if (!base || !token) {
+    console.error('scheduled-publish: missing PAYLOAD_PUBLIC_SERVER_URL or DEPLOY_REPORT_TOKEN')
+    return
+  }
+  // One retry: a cron firing is not redelivered, and the endpoint is idempotent
+  // (a post already promoted no longer matches pubDate <= now AND status=scheduled).
+  for (let attempt = 1; attempt <= 2; attempt++) {
+    try {
+      const res = await fetch(`${base}/api/scheduled-publish/run`, {
+        method: 'POST',
+        headers: { 'x-deploy-report-token': token, 'content-type': 'application/json' },
+      })
+      const body = await res.text()
+      if (res.ok) {
+        console.log(`scheduled-publish (${cron}): ${body.slice(0, 500)}`)
+        return
+      }
+      console.error(`scheduled-publish: HTTP ${res.status} ${body.slice(0, 300)}`)
+    } catch (err) {
+      console.error(`scheduled-publish: attempt ${attempt} failed: ${err}`)
+    }
+    if (attempt === 1) await new Promise((r) => setTimeout(r, 5_000))
+  }
+}
+
 export default {
+  async scheduled(event: ScheduledEvent, env: Env, ctx: ExecutionContext): Promise<void> {
+    ctx.waitUntil(runScheduledPublish(env, event.cron))
+  },
   async fetch(request: Request, env: Env): Promise<Response> {
     const url = new URL(request.url)
     if (request.method === 'GET' && (url.pathname === '/' || url.pathname === '/health')) {
