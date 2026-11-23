@@ -1,4 +1,5 @@
 import type { CollectionConfig } from 'payload'
+import { isFuturePubDate } from '@astropayload/payload-sdk'
 import { sanitizeBlogSlug } from '@astropayload/payload-sdk/formatters'
 
 import { authenticatedRead, cmsApiRead } from '../access/tenantAccess'
@@ -32,8 +33,20 @@ export const BlogPosts: CollectionConfig = {
   },
   hooks: {
     beforeValidate: [
-      ({ data, operation }) => {
+      ({ data, operation, originalDoc }) => {
         if (!data) return
+
+        // "Published" with a pub date in the future used to be a silent trap: the
+        // site sync takes published posts only once pubDate <= now, and nothing
+        // re-runs a deploy when that moment arrives, so the post stayed invisible
+        // until some unrelated deploy happened to come along. "Scheduled" is the
+        // status that actually has a cron behind it, so treat the two as the same
+        // intent and let the author pick either one.
+        const status = data.publishStatus ?? originalDoc?.publishStatus
+        const pubDate = data.pubDate ?? originalDoc?.pubDate
+        if (status === 'published' && isFuturePubDate(pubDate)) {
+          data.publishStatus = 'scheduled'
+        }
 
         if (operation === 'create') {
           const title = typeof data.title === 'string' ? data.title.trim() : ''
@@ -78,7 +91,9 @@ export const BlogPosts: CollectionConfig = {
       required: true,
       admin: {
         date: { pickerAppearance: 'dayAndTime' },
-        description: 'Display date on the site. Also used as the go-live time for scheduled posts.',
+        description:
+          'Display date on the site, and the go-live time. A future date always goes live by itself: ' +
+          'picking Published with one saves as Scheduled.',
       },
     },
     { name: 'updatedDate', type: 'date' },
