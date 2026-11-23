@@ -86,6 +86,22 @@ jobs:
           chmod +x .github/scripts/load-cloudflare-secrets.sh
           .github/scripts/load-cloudflare-secrets.sh
 
+      - name: Setup pnpm (platform)
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9.12.0
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: 'pnpm'
+          cache-dependency-path: platform/pnpm-lock.yaml
+
+      - name: Install platform dependencies
+        working-directory: platform
+        run: pnpm install --frozen-lockfile
+
       - name: Resolve client repo GitHub token
         if: env.DEPLOY_MODE == 'external' && env.GITHUB_REPO != ''
         working-directory: platform
@@ -107,22 +123,6 @@ jobs:
           token: ${{ env.CLIENT_GITHUB_TOKEN || env.EXTERNAL_REPO_GITHUB_TOKEN || secrets.EXTERNAL_REPO_GITHUB_TOKEN || github.token }}
           path: site
           persist-credentials: false
-
-      - name: Setup pnpm (platform)
-        uses: pnpm/action-setup@v4
-        with:
-          version: 9.12.0
-
-      - name: Setup Node
-        uses: actions/setup-node@v4
-        with:
-          node-version: 22
-          cache: 'pnpm'
-          cache-dependency-path: platform/pnpm-lock.yaml
-
-      - name: Install platform dependencies
-        working-directory: platform
-        run: pnpm install --frozen-lockfile
 
       - name: Seed Payload from repo (first publish only)
         if: env.PAYLOAD_URL != ''
